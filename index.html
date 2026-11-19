@@ -151,7 +151,13 @@ $("ab").onclick=()=>{if(ADM)setAdm(false);else{$("af").hidden=!$("af").hidden;$(
 async function login(){try{if(await sha($("ap").value)==HASH){$("ap").value="";setAdm(true);$("rs").textContent="🔓 Mod admin aktif: boleh refresh data dari Google Sheet & edit markah (tab Senarai Murid)"}else $("rs").textContent="⚠ Kata laluan salah"}catch(e){$("rs").textContent="⚠ Pengesahan tidak dapat dibuat dalam pelayar ini"}}
 $("ag").onclick=login;$("ap").onkeydown=e=>{if(e.key=="Enter")login()};
 function saveEd(){if(!EDOC){$("rs").textContent="✔ Pindaan disimpan dalam paparan ini sahaja (storan kongsi tidak tersedia)";return}EDOC.set({m:ED,at:Date.now()}).then(()=>$("rs").textContent="✔ Pindaan markah disimpan & dikongsi").catch(()=>$("rs").textContent="⚠ Gagal menyimpan pindaan (mungkin tiada akses tulis)")}
-$("st").addEventListener("change",e=>{const t=e.target;if(!ADM||!t.dataset||t.dataset.r==null)return;const r=R[+t.dataset.r],k=+t.dataset.k,v=Math.round(+t.value);if(t.value===""||isNaN(v)||v<0||v>100){t.value=r.s[k];$("rs").textContent="⚠ Markah mesti antara 0 dan 100";return}r.s[k]=v;if(r.s.every((x,i)=>x==r.o[i])){delete ED[r.n];r.e=0}else{ED[r.n]=r.s.slice();r.e=1}rank();render();list();saveEd()});
+$("st").addEventListener("change",async e=>{const t=e.target;if(!ADM||!t.dataset||t.dataset.r==null)return;const r=R[+t.dataset.r],k=+t.dataset.k,v=Math.round(+t.value);if(t.value===""||isNaN(v)||v<0||v>100){t.value=r.s[k];$("rs").textContent="⚠ Markah mesti antara 0 dan 100";return}if(v==r.s[k])return;r.s[k]=v;rank();render();list();$("rs").textContent="⏳ Menyimpan ke Google Sheet…";
+try{await writeSheet(r);r.o=r.s.slice();delete ED[r.n];r.e=0;rank();render();list();const at=Date.now();LAST=at;if(DOC)DOC.set({rows:pack(R),at}).catch(()=>{});if(EDOC)EDOC.set({m:ED,at}).catch(()=>{});$("rs").textContent="✅ Markah "+r.n+" disimpan ke Google Sheet"}
+catch(x){if(r.s.every((y,i)=>y==r.o[i])){delete ED[r.n];r.e=0}else{ED[r.n]=r.s.slice();r.e=1}list();if(EDOC)EDOC.set({m:ED,at:Date.now()}).catch(()=>{});$("rs").textContent="⚠ Gagal menyimpan ke Google Sheet ("+(MSG[x.code]||x.code||"ralat")+"). Pindaan hanya disimpan dalam dashboard."}});
+async function writeSheet(r){const mcp=window.claude?await claude.use("mcp"):null;if(!mcp)throw{code:"capability_disabled"};
+const g=await mcp.callTool("Google Sheets","get_values",{spreadsheetId:SH,range:"Sheet1!A2:C1000"},{cache:false});
+const v=(pj(g)||{}).values||[];const i=v.findIndex(x=>x[2]&&String(x[2]).toUpperCase()==r.n&&String(x[0]).toUpperCase()==r.d+" "+r.k);if(i<0)throw{code:"not_found"};
+const n=i+2;await mcp.callTool("Google Sheets","update_values",{spreadsheetId:SH,range:"Sheet1!E"+n+":H"+n,values:[r.s.slice()]},{cache:false})}
 $("rx").onclick=()=>{ED={};applyEd();rank();render();list();saveEd()};
 function tab(n){$("v1").hidden=n!=1;$("v2").hidden=n!=2;$("t1").className=n==1?"on":"";$("t2").className=n==2?"on":""}
 $("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
